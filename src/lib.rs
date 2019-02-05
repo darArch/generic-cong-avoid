@@ -14,7 +14,7 @@ pub mod cubic;
 pub mod reno;
 
 mod bin_helper;
-pub use bin_helper::{make_args, start};
+pub use bin_helper::{make_args, make_logger, start};
 
 pub const DEFAULT_SS_THRESH: u32 = 0x7fff_ffff;
 
@@ -56,7 +56,7 @@ pub trait GenericCongAvoidAlg {
         vec![]
     }
     fn with_args(matches: clap::ArgMatches) -> Self;
-    fn new_flow(&self, logger: Option<slog::Logger>, init_cwnd: u32, mss: u32) -> Self::Flow;
+    fn new_flow(&self, logger: Option<slog::Logger>, info: &DatapathInfo) -> Self::Flow;
 }
 
 pub struct Alg<A: GenericCongAvoidAlg> {
@@ -223,7 +223,7 @@ impl<T: Ipc, A: GenericCongAvoidAlg> CongAlg<T> for Alg<A> {
             init_cwnd,
             curr_cwnd_reduction: 0,
             last_cwnd_reduction: time::now().to_timespec() - time::Duration::milliseconds(500),
-            alg: self.alg.new_flow(self.logger.clone(), init_cwnd, info.mss),
+            alg: self.alg.new_flow(self.logger.clone(), &info),
         };
 
         match (self.ss, self.report_option) {
