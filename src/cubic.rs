@@ -1,6 +1,7 @@
 extern crate time;
 extern crate slog;
 
+use portus::DatapathInfo;
 use GenericCongAvoidAlg;
 use GenericCongAvoidFlow;
 use GenericCongAvoidMeasurements;
@@ -95,11 +96,11 @@ impl GenericCongAvoidAlg for Cubic {
         Default::default()
     }
 
-    fn new_flow(&self, _logger: Option<slog::Logger>, init_cwnd: u32, mss: u32) -> Self::Flow {
+    fn new_flow(&self, _logger: Option<slog::Logger>, info: &DatapathInfo) -> Self::Flow {
         Cubic {
-            pkt_size: mss,
-            init_cwnd: init_cwnd / mss,
-            cwnd: f64::from(init_cwnd / mss),
+            pkt_size: info.mss,
+            init_cwnd: info.init_cwnd / info.mss,
+            cwnd: f64::from(info.init_cwnd / info.mss),
             cwnd_cnt: 0.0f64,
             tcp_friendliness: true,
             beta: 0.3f64,
