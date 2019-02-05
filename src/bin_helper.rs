@@ -3,6 +3,7 @@ use clap::Arg;
 use portus;
 use portus::ipc::{BackendBuilder, Blocking};
 use slog;
+use slog::Drain;
 use std;
 use time;
 use {
@@ -140,4 +141,11 @@ where
         }
         _ => unreachable!(),
     }
+}
+
+pub fn make_logger() -> slog::Logger {
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).chan_size(2048).build().fuse();
+    slog::Logger::root(drain, o!())
 }
