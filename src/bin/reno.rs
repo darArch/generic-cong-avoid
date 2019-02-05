@@ -5,12 +5,11 @@ extern crate time;
 extern crate slog;
 
 extern crate generic_cong_avoid;
-extern crate portus;
 
 use generic_cong_avoid::reno::Reno;
 
 fn main() {
-    let log = portus::algs::make_logger();
+    let log = generic_cong_avoid::make_logger();
     let (alg, ipc) = generic_cong_avoid::make_args("CCP Reno", log.clone())
         .map_err(|e| warn!(log, "bad argument"; "err" => ?e))
         .unwrap();
