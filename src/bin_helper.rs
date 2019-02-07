@@ -144,7 +144,21 @@ where
 }
 
 pub fn make_logger() -> slog::Logger {
-    let decorator = slog_term::TermDecorator::new().build();
+    let now = std::time::SystemTime::now();
+    let ts = now.duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .expect("Time went backwards");
+    let ms_ts = ts.as_millis();
+
+    let log_path = format!("/usr/src/output/server/cwnd/{}.txt", ms_ts);
+    
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(log_path)
+        .unwrap();
+
+    let decorator = slog_term::PlainDecorator::new(file);
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).chan_size(2048).build().fuse();
     slog::Logger::root(drain, o!())
