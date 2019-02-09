@@ -74,10 +74,12 @@ impl<T: Ipc, A: GenericCongAvoidAlg> CongAlg<T> for Alg<A> {
     type Flow = Flow<T, A::Flow>;
 
     fn name() -> &'static str {
+        eprintln!("{}: lib/name", system_time());
         A::name()
     }
 
     fn datapath_programs(&self) -> HashMap<&'static str, String> {
+        eprintln!("{}: lib/datapath_programs", system_time());
         let mut h = HashMap::default();
         h.insert(
             "DatapathIntervalProg",
@@ -203,6 +205,7 @@ impl<T: Ipc, A: GenericCongAvoidAlg> CongAlg<T> for Alg<A> {
     }
 
     fn new_flow(&self, control: Datapath<T>, info: DatapathInfo) -> Self::Flow {
+        eprintln!("{}: lib/new_flow", system_time());
         let init_cwnd = if self.init_cwnd != 0 {
             self.init_cwnd
         } else {
@@ -267,6 +270,7 @@ pub struct Flow<T: Ipc, A: GenericCongAvoidFlow> {
 
 impl<I: Ipc, A: GenericCongAvoidFlow> portus::Flow for Flow<I, A> {
     fn on_report(&mut self, _sock_id: u32, m: Report) {
+        eprintln!("{}: lib/on_report", system_time());
         let mut ms = self.get_fields(&m);
 
         if self.in_startup {
@@ -323,6 +327,7 @@ impl<I: Ipc, A: GenericCongAvoidFlow> portus::Flow for Flow<I, A> {
 impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
     /// Make no updates in the datapath, and send a report after an interval
     fn install_datapath_interval(&mut self, interval: time::Duration) -> Scope {
+        eprintln!("{}: lib/install_datapath_interval", system_time());
         self.control_channel
             .set_program(
                 "DatapathIntervalProg",
@@ -333,6 +338,7 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
 
     /// Make no updates in the datapath, and send a report after each RTT
     fn install_datapath_interval_rtt(&mut self) -> Scope {
+        eprintln!("{}: lib/install_datapath_interval_rtt", system_time());
         self.control_channel
             .set_program("DatapathIntervalRTTProg", None)
             .unwrap()
@@ -340,6 +346,7 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
 
     /// Make no updates in the datapath, but send a report on every ack.
     fn install_ack_update(&mut self) -> Scope {
+        eprintln!("{}: lib/install_ack_update", system_time());
         self.control_channel
             .set_program("AckUpdateProg", None)
             .unwrap()
@@ -348,12 +355,14 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
     /// Don't update acked, since those acks are already accounted for in slow start.
     /// Send a report once there is a drop or timeout.
     fn install_ss_update(&mut self) -> Scope {
+        eprintln!("{}: lib/install_ss_update", system_time());
         self.control_channel
             .set_program("SSUpdateProg", None)
             .unwrap()
     }
 
     fn update_cwnd(&self) {
+        eprintln!("{}: lib/update_cwnd", system_time());
         if let Err(e) = self
             .control_channel
             .update_field(&self.sc, &[("Cwnd", self.alg.curr_cwnd())])
@@ -367,6 +376,7 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
     }
 
     fn get_fields(&mut self, m: &Report) -> GenericCongAvoidMeasurements {
+        eprintln!("{}: lib/get_fields", system_time());
         let sc = &self.sc;
         let ack = m
             .get_field(&String::from("Report.acked"), sc)
@@ -403,6 +413,7 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
     }
 
     fn handle_timeout(&mut self) {
+        eprintln!("{}: lib/handle_timeout", system_time());
         self.ss_thresh /= 2;
         if self.ss_thresh < self.init_cwnd {
             self.ss_thresh = self.init_cwnd;
@@ -424,6 +435,7 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
     }
 
     fn maybe_reduce_cwnd(&mut self, m: &GenericCongAvoidMeasurements) {
+        eprintln!("{}: lib/maybe_reduce_cwnd", system_time());
         if m.loss > 0 || m.sacked > 0 {
             if self.deficit_timeout > 0
                 && ((time::now().to_timespec() - self.last_cwnd_reduction)
@@ -454,6 +466,7 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
     }
 
     fn slow_start_increase(&mut self, acked: u32) -> u32 {
+        eprintln!("{}: lib/slow_start_increase", system_time());
         let mut new_bytes_acked = acked;
         if self.alg.curr_cwnd() < self.ss_thresh {
             // increase cwnd by 1 per packet, until ssthresh
@@ -482,4 +495,11 @@ impl<T: Ipc, A: GenericCongAvoidFlow> Flow<T, A> {
 
         new_bytes_acked
     }
+}
+
+fn system_time() -> u128 {
+    let now = std::time::SystemTime::now();
+    let ts = now.duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .expect("Time went backwards");
+    ts.as_millis()
 }

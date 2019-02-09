@@ -15,6 +15,7 @@ pub fn make_args<A: GenericCongAvoidAlg>(
     name: &str,
     logger: impl Into<Option<slog::Logger>>,
 ) -> Result<(Alg<A>, String), std::num::ParseIntError> {
+    eprintln!("{}: bin_helper/make_args", system_time());
     let ss_thresh_default = format!("{}", DEFAULT_SS_THRESH);
     let matches = clap::App::new(name)
         .version("0.2.0")
@@ -94,6 +95,7 @@ pub fn start<A: GenericCongAvoidAlg>(ipc: &str, log: slog::Logger, alg: Alg<A>)
 where
     A: 'static,
 {
+    eprintln!("{}: bin_helper/start", system_time());
     match ipc {
         "unix" => {
             use portus::ipc::unix::Socket;
@@ -144,6 +146,7 @@ where
 }
 
 pub fn make_logger() -> slog::Logger {
+    eprintln!("{}: bin_helper/make_logger", system_time());
     let now = std::time::SystemTime::now();
     let ts = now.duration_since(std::time::SystemTime::UNIX_EPOCH)
         .expect("Time went backwards");
@@ -160,6 +163,13 @@ pub fn make_logger() -> slog::Logger {
 
     let decorator = slog_term::PlainDecorator::new(file);
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).chan_size(2048).build().fuse();
+    let drain = slog_async::Async::new(drain).chan_size(131072).build().fuse();
     slog::Logger::root(drain, o!())
+}
+
+fn system_time() -> u128 {
+    let now = std::time::SystemTime::now();
+    let ts = now.duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .expect("Time went backwards");
+    ts.as_millis()
 }
